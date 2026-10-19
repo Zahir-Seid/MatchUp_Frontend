@@ -628,7 +628,7 @@ private fun GameCard(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        text = formatLabelShort(game.format),
+                        text = formatLabelShort(game.format, strings),
                         style = MaterialTheme.typography.labelSmall,
                         color = MatchUpColors.Lime,
                         letterSpacing = 0.9.sp,

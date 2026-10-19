@@ -247,6 +247,8 @@ interface Strings {
     val monthsShort: List<String>
     val weekdaysShort: List<String>
     val timeTba: String
+    val am: String
+    val pm: String
     val dateTba: String
     val justNow: String
     val yesterday: String
@@ -576,6 +578,8 @@ object EnglishStrings : Strings {
         "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun",
     )
     override val timeTba = "Time TBA"
+    override val am = "AM"
+    override val pm = "PM"
     override val dateTba = "Date TBA"
     override val justNow = "Just now"
     override val yesterday = "Yesterday"

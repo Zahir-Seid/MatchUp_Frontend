@@ -19,7 +19,7 @@ fun Instant.localDateTime(): LocalDateTime = toLocalDateTime(timeZone)
 
 fun Instant.localDate(): LocalDate = localDateTime().date
 
-fun formatTime(value: String, strings: Strings? = null): String = runCatching {
+fun formatTime(value: String, strings: Strings): String = runCatching {
     val time = Instant.parse(value).localDateTime()
     val hour = when {
         time.hour == 0 -> 12
@@ -27,11 +27,11 @@ fun formatTime(value: String, strings: Strings? = null): String = runCatching {
         else -> time.hour
     }
     val minute = time.minute.toString().padStart(2, '0')
-    val suffix = if (time.hour < 12) "AM" else "PM"
+    val suffix = if (time.hour < 12) strings.am else strings.pm
     "$hour:$minute $suffix"
-}.getOrDefault(strings?.timeTba ?: "Time TBA")
+}.getOrDefault(strings.timeTba)
 
-fun formatTimeRange(start: String, end: String, strings: Strings? = null): String =
+fun formatTimeRange(start: String, end: String, strings: Strings): String =
     "${formatTime(start, strings)} – ${formatTime(end, strings)}"
 
 fun formatDateShort(value: String, strings: Strings): String = runCatching {
@@ -121,9 +121,9 @@ fun formatLabel(format: String, strings: Strings): String = when (format) {
     else -> format.replace('_', ' ').replaceFirstChar { it.uppercase() }
 }
 
-fun formatLabelShort(format: String): String = when (format) {
-    "5_a_side" -> "5-A-SIDE"
-    "7_a_side" -> "7-A-SIDE"
+fun formatLabelShort(format: String, strings: Strings): String = when (format) {
+    "5_a_side" -> strings.fiveASide.uppercase()
+    "7_a_side" -> strings.sevenASide.uppercase()
     else -> format.replace('_', ' ').uppercase()
 }
 
