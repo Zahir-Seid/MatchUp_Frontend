@@ -14,7 +14,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.GetCredentialUnsupportedException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import et.matchup.app.config.GeneratedConfig
@@ -100,8 +103,14 @@ actual fun rememberGoogleSignIn(
                             } else {
                                 latestError.value(GoogleSignInProblem.NoAccount)
                             }
-                        } catch (_: GetCredentialException) {
-                            latestError.value(GoogleSignInProblem.Cancelled)
+                        } catch (error: GetCredentialException) {
+                            val problem = when (error) {
+                                is GetCredentialCancellationException -> GoogleSignInProblem.Cancelled
+                                is NoCredentialException -> GoogleSignInProblem.NoAccount
+                                is GetCredentialUnsupportedException -> GoogleSignInProblem.Unavailable
+                                else -> GoogleSignInProblem.Failed
+                            }
+                            latestError.value(problem)
                         } catch (_: Throwable) {
                             latestError.value(GoogleSignInProblem.Failed)
                         }
