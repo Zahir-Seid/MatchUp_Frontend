@@ -110,10 +110,11 @@ HTTPS.
 
 ## Offline behavior
 
-The PWA caches the app shell in a service worker. Data snapshots are stored as
-JSON in localStorage; Android stores the same snapshots in private
-SharedPreferences. Account-scoped keys include the user ID so one account's
-bookings and notifications are never shown to another.
+The PWA caches the app shell in a service worker and, after the first
+launch, also caches the JS/WASM bundle so the app can relaunch offline. Data
+snapshots are stored as JSON in localStorage; Android stores the same snapshots
+in private SharedPreferences. Account-scoped keys include the user ID so one
+account's bookings and notifications are never shown to another.
 
 When offline:
 
@@ -150,6 +151,9 @@ before it can be exposed.
 
 - **PWA:** `app.matchup.et` with HTTPS. On iPhone/iPad, open in Safari, Share →
   Add to Home Screen. The manifest requests standalone display.
+- **Browser support:** the Compose WASM bundle needs WebAssembly GC. Use Safari
+  18.2+ (iOS 18.2+) or a current Chrome/Edge/Firefox; older iOS versions cannot
+  run this PWA target.
 - **Android:** build the release bundle, sign it, upload to the Play Console or
   distribute directly. Add the release SHA-256 to
   `.well-known/assetlinks.json` for App Links (see `deploy/README.md`).
@@ -164,6 +168,9 @@ before it can be exposed.
 - `:shared:compileKotlinWasmJs` succeeds with no warnings.
 - The WASM production distribution builds with
   `:webApp:wasmJsBrowserDistribution` (about 16 MB of JS/WASM output).
+- The PWA dev server on port 9173 serves the app shell and proxies `/v1` to
+  `127.0.0.1:8082`; the proxy was verified with a local stub, not the real
+  backend.
 - Android compilation requires the Android SDK and has not been run in this
   environment.
 

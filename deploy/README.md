@@ -8,10 +8,21 @@
    ./gradlew :webApp:wasmJsBrowserDistribution
    ```
 
-2. Copy `webApp/build/dist/wasmJs/productionExecutable/` to `/srv/matchup/app/`.
-3. Put `deploy/Caddyfile` at `/etc/caddy/Caddyfile` and reload Caddy:
+2. Copy `webApp/build/dist/wasmJs/productionExecutable/` to `/srv/matchup/app/`,
+   keeping the App Links file in `.well-known/`:
 
    ```sh
+   sudo mkdir -p /srv/matchup/app
+   sudo rsync -a --delete --exclude '.well-known/' \
+       webApp/build/dist/wasmJs/productionExecutable/ /srv/matchup/app/
+   ```
+
+3. Put `deploy/Caddyfile` at `/etc/caddy/Caddyfile`, make sure Caddy can write
+   its log directory, and reload:
+
+   ```sh
+   sudo install -d -o caddy -g caddy /var/log/caddy
+   sudo install -m 644 deploy/Caddyfile /etc/caddy/Caddyfile
    sudo caddy validate --config /etc/caddy/Caddyfile
    sudo systemctl reload caddy
    ```
