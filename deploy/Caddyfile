@@ -1,0 +1,52 @@
+# MatchUp PWA + same-origin API proxy.
+#
+# Install the webApp distribution at /srv/matchup/app:
+#   ./gradlew :webApp:wasmJsBrowserDistribution
+#   sudo rsync -a --delete --exclude '.well-known/' \
+#       webApp/build/dist/wasmJs/productionExecutable/ /srv/matchup/app/
+#
+# Caddy obtains and renews HTTPS for app.matchup.et automatically.
+
+app.matchup.et {
+    encode zstd gzip
+    root * /srv/matchup/app
+
+    # The public API has no CORS middleware. Serving /v1 from the PWA origin
+    # keeps browser requests same-origin.
+    handle /v1/* {
+        reverse_proxy 127.0.0.1:8082
+    }
+
+    # Password-reset and email-verification links are SPA routes.
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+
+    @wasm path *.wasm
+    header @wasm Content-Type "application/wasm"
+
+    @shell path /index.html / /manifest.webmanifest /sw.js
+    header @shell Cache-Control "no-cache, no-store, must-revalidate"
+
+    @code path *.js *.mjs *.wasm
+    header @code Cache-Control "public, max-age=0, must-revalidate"
+
+    @icons path /icons/*
+    header @icons Cache-Control "public, max-age=2592000, immutable"
+
+    log {
+        output file /var/log/caddy/matchup-pwa.log {
+            roll_size 20MiB
+            roll_keep 5
+        }
+    }
+}

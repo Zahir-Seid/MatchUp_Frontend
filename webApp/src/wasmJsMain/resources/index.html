@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#070B09">
+    <meta name="description" content="Find pickup football games, reserve your spot, and check in with MatchUp.">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MatchUp">
+    <title>MatchUp</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<div id="webApp" aria-label="MatchUp application"></div>
+
+<div id="boot" aria-live="polite">
+    <div class="boot-mark">M</div>
+    <div class="boot-name">MATCH<span>UP</span></div>
+    <div class="boot-tagline">Find your game. Own the pitch.</div>
+    <div class="boot-spinner" aria-hidden="true"></div>
+</div>
+
+<script src="/webApp.js"></script>
+<script>
+    (function () {
+        var boot = document.getElementById('boot');
+
+        function hideBoot() {
+            if (!boot) return;
+            boot.classList.add('boot-hidden');
+            window.setTimeout(function () {
+                if (boot && boot.parentNode) boot.parentNode.removeChild(boot);
+            }, 260);
+        }
+
+        // Compose renders into a shadow root inside #webApp. Hide the static
+        // splash as soon as its canvas exists, with a slow-network fallback.
+        var checks = 0;
+        var timer = window.setInterval(function () {
+            checks += 1;
+            var host = document.getElementById('webApp');
+            var root = host && host.shadowRoot;
+            if ((root && root.querySelector('canvas')) || checks > 120) {
+                window.clearInterval(timer);
+                hideBoot();
+            }
+        }, 100);
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function (error) {
+                    console.warn('MatchUp service worker registration failed', error);
+                });
+            });
+        }
+    })();
+</script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+html,
+body,
+#webApp {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    background: #070b09;
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    overflow: hidden;
+    background: #070b09;
+    color: #f3f7f1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+#webApp {
+    position: fixed;
+    top: env(safe-area-inset-top);
+    right: env(safe-area-inset-right);
+    bottom: env(safe-area-inset-bottom);
+    left: env(safe-area-inset-left);
+}
+
+#webApp canvas {
+    outline: none;
+    touch-action: pan-x pan-y;
+}
+
+#boot {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 80% 10%, #16220f 0%, #070b09 46%, #0a100d 100%);
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    transition: opacity 220ms ease;
+}
+
+#boot.boot-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.boot-mark {
+    display: grid;
+    place-items: center;
+    width: 76px;
+    height: 76px;
+    border-radius: 24px;
+    background: #d7ff4f;
+    color: #111800;
+    font-size: 46px;
+    font-weight: 900;
+    letter-spacing: -4px;
+    box-shadow: 0 0 46px rgba(215, 255, 79, 0.22);
+}
+
+.boot-name {
+    margin-top: 18px;
+    color: #f3f7f1;
+    font-size: 25px;
+    font-weight: 900;
+    letter-spacing: 3px;
+}
+
+.boot-name span {
+    color: #d7ff4f;
+}
+
+.boot-tagline {
+    margin-top: 9px;
+    color: #9aafa3;
+    font-size: 13px;
+    letter-spacing: 0.3px;
+}
+
+.boot-spinner {
+    width: 22px;
+    height: 22px;
+    margin-top: 34px;
+    border: 2px solid rgba(215, 255, 79, 0.2);
+    border-top-color: #d7ff4f;
+    border-radius: 50%;
+    animation: boot-spin 0.85s linear infinite;
+}
+
+@keyframes boot-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .boot-spinner {
+        animation-duration: 2.4s;
+    }
+}
