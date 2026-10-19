@@ -11,6 +11,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MatchUp">
     <title>MatchUp</title>
+    <style>html,body{margin:0;background:#070b09;color-scheme:dark}</style>
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -41,15 +42,25 @@
         }
 
         // Compose renders into a shadow root inside #webApp. Hide the static
-        // splash as soon as its canvas exists, with a slow-network fallback.
+        // splash as soon as its canvas exists. If it takes unusually long,
+        // keep the splash visible with a hint instead of showing a blank page.
         var checks = 0;
         var timer = window.setInterval(function () {
             checks += 1;
             var host = document.getElementById('webApp');
             var root = host && host.shadowRoot;
-            if ((root && root.querySelector('canvas')) || checks > 120) {
+            if (root && root.querySelector('canvas')) {
                 window.clearInterval(timer);
                 hideBoot();
+                return;
+            }
+            if (boot && checks > 120 && !boot.dataset.slow) {
+                boot.dataset.slow = '1';
+                var tagline = boot.querySelector('.boot-tagline');
+                if (tagline) {
+                    tagline.textContent =
+                        'Still loading. A slow connection can take a moment; older browsers without WebAssembly are not supported.';
+                }
             }
         }, 100);
 

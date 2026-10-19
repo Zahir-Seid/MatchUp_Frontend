@@ -84,9 +84,14 @@ body {
 
 .boot-tagline {
     margin-top: 9px;
+    max-width: 320px;
+    padding: 0 20px;
+    box-sizing: border-box;
     color: #9aafa3;
     font-size: 13px;
+    line-height: 1.5;
     letter-spacing: 0.3px;
+    text-align: center;
 }
 
 .boot-spinner {
