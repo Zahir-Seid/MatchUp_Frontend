@@ -13,7 +13,7 @@ interface KeyValueStore {
     fun keys(): Set<String>
 }
 
-/** Android passes its Activity here so both storage and Credential Manager work. */
+/** Android passes its application context here for storage and platform services. */
 expect fun initializePlatform(context: Any?, initialUrl: String?)
 
 expect fun platformStore(): KeyValueStore

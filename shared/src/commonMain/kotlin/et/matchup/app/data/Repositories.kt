@@ -214,10 +214,6 @@ class BookingRepository(
         return booking
     }
 
-    fun putBooking(booking: BookingDto) {
-        session.currentUser()?.id?.let { remember(booking, it) }
-    }
-
     fun clearMemory() {
         listMemory = null
     }
@@ -420,10 +416,6 @@ class SavedTeammatesRepository(
     }
 
     private fun key(userId: String) = "local.teammates.$userId"
-
-    fun clear(userId: String) {
-        store.remove(key(userId))
-    }
 }
 
 private fun offlineError() = ApiException(
