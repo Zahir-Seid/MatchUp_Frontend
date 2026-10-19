@@ -7,6 +7,3 @@ local.properties
 .idea/
 .DS_Store
 .kotlin/
-webApp/src/wasmJsMain/resources/composeApp.js
-webApp/src/wasmJsMain/resources/*.wasm
-webApp/src/wasmJsMain/resources/*.mjs
