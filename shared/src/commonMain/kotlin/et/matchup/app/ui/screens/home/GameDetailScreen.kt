@@ -101,6 +101,7 @@ fun GameDetailScreen(
     var quote by remember { mutableStateOf<QuoteDto?>(null) }
     var quoteLoading by remember { mutableStateOf(false) }
     var quoteError by remember { mutableStateOf<String?>(null) }
+    var quoteKey by remember { mutableStateOf(0) }
     var reserving by remember { mutableStateOf(false) }
     var reserveError by remember { mutableStateOf<String?>(null) }
     var loadKey by remember { mutableStateOf(0) }
@@ -142,16 +143,17 @@ fun GameDetailScreen(
     LaunchedEffect(showMonthly) {
         if (!showMonthly) bookingType = "single"
     }
-    LaunchedEffect(game?.id, bookingType, spots, online) {
+    LaunchedEffect(game?.id, bookingType, spots, online, quoteKey) {
         val loaded = game ?: return@LaunchedEffect
         if (!online || full) {
             quote = null
             quoteLoading = false
+            quoteError = null
             return@LaunchedEffect
         }
-        delay(250)
         quoteLoading = true
         quoteError = null
+        delay(250)
         try {
             quote = state.dependencies.catalog.quote(loaded.id, bookingType, spots)
         } catch (throwable: Throwable) {
@@ -394,11 +396,24 @@ fun GameDetailScreen(
                                         }
                                         if (quoteError != null) {
                                             Spacer(Modifier.height(7.dp))
-                                            Text(
-                                                text = quoteError.orEmpty(),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MatchUpColors.Amber,
-                                            )
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    text = quoteError.orEmpty(),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MatchUpColors.Amber,
+                                                    modifier = Modifier.weight(1f),
+                                                )
+                                                TextButton(
+                                                    onClick = { quoteKey += 1 },
+                                                    enabled = online,
+                                                ) {
+                                                    Text(
+                                                        text = strings.retry,
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MatchUpColors.Lime,
+                                                    )
+                                                }
+                                            }
                                         }
                                         if (!online) {
                                             Spacer(Modifier.height(7.dp))
@@ -542,7 +557,8 @@ fun GameDetailScreen(
                             }
                         }
                     },
-                    enabled = online && game != null && !full && !reserving && maxSpots > 0,
+                    enabled = online && game != null && !full && !reserving && maxSpots > 0 &&
+                        quote != null && !quoteLoading,
                     loading = reserving,
                     modifier = Modifier.weight(1.05f),
                 )
