@@ -91,6 +91,27 @@ async function cacheFirst(request) {
   return response;
 }
 
+self.addEventListener('message', (event) => {
+  const data = event.data;
+  if (!data || data.type !== 'CACHE_URLS' || !Array.isArray(data.urls)) return;
+
+  const urls = data.urls.filter((value) => {
+    if (typeof value !== 'string') return false;
+    try {
+      return new URL(value, self.location.origin).origin === self.location.origin;
+    } catch (_) {
+      return false;
+    }
+  });
+  if (urls.length === 0) return;
+
+  event.waitUntil(
+    caches.open(ASSET_CACHE).then((cache) =>
+      Promise.allSettled(urls.map((url) => cache.add(url)))
+    )
+  );
+});
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;

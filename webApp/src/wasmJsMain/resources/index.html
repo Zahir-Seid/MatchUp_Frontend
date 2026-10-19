@@ -54,11 +54,35 @@
         }, 100);
 
         if ('serviceWorker' in navigator) {
+            function cacheLoadedAssets() {
+                var controller = navigator.serviceWorker.controller;
+                if (!controller || !window.performance ||
+                    typeof performance.getEntriesByType !== 'function') {
+                    return;
+                }
+                var origin = window.location.origin + '/';
+                var urls = performance.getEntriesByType('resource')
+                    .map(function (entry) { return entry.name; })
+                    .filter(function (url) {
+                        return url.indexOf(origin) === 0 &&
+                            /\.(?:js|mjs|wasm|css|png|jpg|jpeg|svg|webp|ico|woff2?|ttf)$/i
+                                .test(url.split('?')[0]);
+                    });
+                // The shell is cached on install; the bundle and its hashed WASM
+                // files are cached here on first launch so the next launch can be
+                // fully offline.
+                urls.push('/webApp.js', '/styles.css');
+                controller.postMessage({ type: 'CACHE_URLS', urls: urls });
+            }
+
             window.addEventListener('load', function () {
-                navigator.serviceWorker.register('/sw.js').catch(function (error) {
+                navigator.serviceWorker.register('/sw.js').then(function () {
+                    return navigator.serviceWorker.ready;
+                }).then(cacheLoadedAssets).catch(function (error) {
                     console.warn('MatchUp service worker registration failed', error);
                 });
             });
+            navigator.serviceWorker.addEventListener('controllerchange', cacheLoadedAssets);
         }
     })();
 </script>
