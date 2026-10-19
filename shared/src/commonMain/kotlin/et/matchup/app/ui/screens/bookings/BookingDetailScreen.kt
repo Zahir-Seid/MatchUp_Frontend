@@ -550,7 +550,7 @@ private fun BookingDetailsCard(booking: BookingDto) {
         Spacer(Modifier.height(8.dp))
         DetailLine(
             strings.bookingType,
-            if (booking.bookingType == "monthly") strings.monthlyPlan else strings.singleGame,
+            if (booking.bookingType == "monthly_4wk") strings.monthlyPlan else strings.singleGame,
         )
         Spacer(Modifier.height(8.dp))
         DetailLine(strings.spots, "${booking.spotCount}")

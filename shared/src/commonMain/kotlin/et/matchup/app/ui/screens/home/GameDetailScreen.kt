@@ -304,7 +304,7 @@ fun GameDetailScreen(
                                     SegmentedControl(
                                         options = listOf(
                                             "single" to strings.singleGame,
-                                            "monthly" to strings.monthlyPlan,
+                                            "monthly_4wk" to strings.monthlyPlan,
                                         ),
                                         selected = bookingType,
                                         onSelect = { bookingType = it },
