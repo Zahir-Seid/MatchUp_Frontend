@@ -81,8 +81,14 @@ val generateAppConfig = tasks.register("generateAppConfig") {
 
     doLast {
         val out = generatedConfigDir.get().asFile
-        out.mkdirs()
-        File(out, "GeneratedConfig.kt").writeText(
+        // Wipe the output directory so a renamed or removed key never leaves a
+        // stale source file behind (it would be compiled twice).
+        out.deleteRecursively()
+        // Keep the package directory layout in sync with the declared package
+        // so Android Studio shows the file under et.matchup.app.config.
+        val packageDir = File(out, "et/matchup/app/config")
+        packageDir.mkdirs()
+        File(packageDir, "GeneratedConfig.kt").writeText(
             """
             package et.matchup.app.config
 
@@ -100,6 +106,10 @@ val generateAppConfig = tasks.register("generateAppConfig") {
         )
     }
 }
+
+// The generated file is compiled into every target, so the directory carries a
+// dependency on the generator task. KGP propagates it to the compile tasks.
+val generatedConfigSources = files(generatedConfigDir).builtBy(generateAppConfig)
 
 kotlin {
     android {
@@ -122,7 +132,7 @@ kotlin {
 
     sourceSets {
         commonMain {
-            kotlin.srcDir(generatedConfigDir)
+            kotlin.srcDir(generatedConfigSources)
             dependencies {
                 implementation(libs.compose.runtime)
                 implementation(libs.compose.foundation)
@@ -156,8 +166,10 @@ kotlin {
     }
 }
 
+// Every Kotlin compilation (metadata, Android, Wasm) needs the generated
+// config on the source path before it can run.
 tasks.matching { task ->
-    task.name.startsWith("compile") && task.name.contains("Kotlin")
+    task.name.startsWith("compile") || task.name.startsWith("assemble")
 }.configureEach {
     dependsOn(generateAppConfig)
 }
