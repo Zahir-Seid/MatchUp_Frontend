@@ -174,4 +174,11 @@ tasks.matching { task ->
     dependsOn(generateAppConfig)
 }
 
+// Compose Multiplatform registers this check for every Wasm target. It only
+// matters for modules that run Compose UI tests on the browser; :shared is a
+// library with no Wasm test binary or test sources.
+tasks.matching { it.name == "checkComposeUiTestConfigurationForWasmJs" }.configureEach {
+    enabled = false
+}
+
 

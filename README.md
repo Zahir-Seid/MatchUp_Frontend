@@ -39,13 +39,35 @@ deploy/       Caddy config and Android App Links assetlinks example
 
 ## Requirements
 
-- JDK 17 or newer.
-- Android SDK for Android builds (`ANDROID_HOME` or `sdk.dir` in
-  `local.properties`). This repository was assembled without a local Android
-  SDK, so Android compilation is left to the developer/CI.
+- JDK 17 or newer. Android Studio's bundled JDK 21 also works.
+- Android Studio Quail 3 (2026.1.3) or newer. The project uses AGP 9.4, which
+  requires that version, and `compileSdk 37`, which needs at least Panda 3
+  (2025.3.3).
+- Android SDK Platform 37 (`platforms;android-37.0`) and Build Tools 36.0.0.
+  Configure them through `ANDROID_HOME` or `sdk.dir` in `local.properties`.
 - Node/Yarn do not need to be installed; the Kotlin Gradle plugin downloads
   pinned copies the first time a JS/WASM task runs.
 - Backend running locally on port 8082 for development.
+
+## Open in Android Studio
+
+The repository is a standard Gradle project with a committed wrapper, so
+Android Studio imports it without conversion:
+
+1. **File → Open** and select the repository root, not `androidApp/`.
+2. Set **Gradle JDK** to 17 or newer (Settings → Build, Execution, Deployment →
+   Build Tools → Gradle → Gradle JDK).
+3. Wait for Gradle sync. `:androidApp` is the Android application module;
+   `:shared` and `:webApp` are Kotlin Multiplatform modules.
+4. Install SDK Platform 37 and Build Tools 36.0.0 when prompted, or run
+   `sdkmanager "platforms;android-37.0" "build-tools;36.0.0"`.
+5. Select the `androidApp` run configuration and run it on an emulator or
+   device.
+
+`local.properties` (SDK path and optional MatchUp config keys) and `.idea/` are
+local files and stay out of version control. To verify the project from a
+terminal, run `./gradlew build`; it builds the Android variants, runs lint and
+produces the WASM distribution.
 
 ## Configuration
 
@@ -108,6 +130,10 @@ For a physical phone use the computer's LAN address, for example
 Cleartext HTTP is enabled only in the debug manifest. Release builds must use
 HTTPS.
 
+The Android modules compile against API 37 (`compileSdk = 37`) with
+`targetSdk = 36` and `minSdk = 26`. Android Studio uses the same Gradle build,
+so the IDE build and the CLI build produce identical output.
+
 ## Offline behavior
 
 The PWA caches the app shell in a service worker and, after the first
@@ -168,11 +194,13 @@ before it can be exposed.
 - `:shared:compileKotlinWasmJs` succeeds with no warnings.
 - The WASM production distribution builds with
   `:webApp:wasmJsBrowserDistribution` (about 16 MB of JS/WASM output).
+- `:androidApp:assembleDebug` and `:androidApp:assembleRelease` succeed with
+  `compileSdk = 37` and Build Tools 36.0.0 against the local Android SDK.
+- `./gradlew build` passes: Android debug/release packaging, lint and the WASM
+  distribution.
 - The PWA dev server on port 9173 serves the app shell and proxies `/v1` to
   `127.0.0.1:8082`; the proxy was verified with a local stub, not the real
   backend.
-- Android compilation requires the Android SDK and has not been run in this
-  environment.
 
 Before shipping, run through this smoke test online and offline:
 

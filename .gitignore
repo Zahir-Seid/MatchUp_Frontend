@@ -4,6 +4,11 @@ build/
 local.properties
 .env
 *.iml
+*.hprof
 .idea/
 .DS_Store
 .kotlin/
+.cxx/
+.externalNativeBuild/
+captures/
+node_modules/
