@@ -6,7 +6,7 @@
  *
  * Bump CACHE_VERSION on every deployment so old assets are evicted.
  */
-const CACHE_VERSION = 'matchup-v1';
+const CACHE_VERSION = 'matchup-v2';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
 const SHELL = [

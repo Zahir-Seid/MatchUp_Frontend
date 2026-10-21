@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- android:windowLightNavigationBar was added in API 27. -->
+    <style name="Theme.MatchUp" parent="Theme.MatchUp.Base">
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

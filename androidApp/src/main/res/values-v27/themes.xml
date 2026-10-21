@@ -2,6 +2,6 @@
 <resources>
     <!-- android:windowLightNavigationBar was added in API 27. -->
     <style name="Theme.MatchUp" parent="Theme.MatchUp.Base">
-        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>

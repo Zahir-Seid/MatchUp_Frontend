@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#070B09">
+    <meta name="theme-color" content="#F6F9F2" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#070B09" media="(prefers-color-scheme: dark)">
     <meta name="description" content="Find pickup football games, reserve your spot, and check in with MatchUp.">
     <meta name="format-detection" content="telephone=no">
     <meta name="mobile-web-app-capable" content="yes">
@@ -11,7 +12,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MatchUp">
     <title>MatchUp</title>
-    <style>html,body{margin:0;background:#070b09;color-scheme:dark}</style>
+    <style>html,body{margin:0;background:#f6f9f2;color-scheme:light dark}@media (prefers-color-scheme:dark){html,body{background:#070b09}}</style>
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -24,7 +25,7 @@
 <div id="boot" aria-live="polite">
     <div class="boot-mark">M</div>
     <div class="boot-name">MATCH<span>UP</span></div>
-    <div class="boot-tagline">Find your game. Own the pitch.</div>
+    <div class="boot-tagline">Find your game. Book your spot.</div>
     <div class="boot-spinner" aria-hidden="true"></div>
 </div>
 

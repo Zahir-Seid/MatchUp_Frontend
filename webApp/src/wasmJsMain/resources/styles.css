@@ -9,7 +9,7 @@ body,
 
 html {
     background: #070b09;
-    color-scheme: dark;
+    color-scheme: light dark;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
 }
@@ -113,5 +113,39 @@ body {
 @media (prefers-reduced-motion: reduce) {
     .boot-spinner {
         animation-duration: 2.4s;
+    }
+}
+
+/* Light theme: the Compose canvas re-renders from its own palette, these
+   rules only cover the static shell and boot splash. */
+@media (prefers-color-scheme: light) {
+    html {
+        background: #f6f9f2;
+    }
+
+    body {
+        background: #f6f9f2;
+        color: #0c1712;
+    }
+
+    #boot {
+        background: radial-gradient(circle at 80% 10%, #eef6d8 0%, #f6f9f2 46%, #edf2e8 100%);
+    }
+
+    .boot-name {
+        color: #0c1712;
+    }
+
+    .boot-name span {
+        color: #5c7a00;
+    }
+
+    .boot-tagline {
+        color: #4c6157;
+    }
+
+    .boot-spinner {
+        border-color: rgba(92, 122, 0, 0.18);
+        border-top-color: #5c7a00;
     }
 }
