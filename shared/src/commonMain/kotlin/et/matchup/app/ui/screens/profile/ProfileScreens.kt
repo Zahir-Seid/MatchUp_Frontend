@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.Cake
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Delete
@@ -62,7 +61,6 @@ import et.matchup.app.config.GeneratedConfig
 import et.matchup.app.data.ApiException
 import et.matchup.app.data.UserDto
 import et.matchup.app.data.apiExceptionMessage
-import et.matchup.app.platform.apiBaseUrl
 import et.matchup.app.ui.LocalStrings
 import et.matchup.app.ui.components.Avatar
 import et.matchup.app.ui.components.DividerLine
@@ -156,42 +154,23 @@ fun ProfileScreen(
                             }
                         }
                     }
-                    if (user.phone != null || user.age != null) {
+                    if (user.phone != null) {
                         Spacer(Modifier.height(14.dp))
                         DividerLine()
                         Spacer(Modifier.height(12.dp))
-                        if (user.phone != null) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Outlined.Phone,
-                                    contentDescription = null,
-                                    tint = MatchUpColors.TextFaint,
-                                    modifier = Modifier.size(15.dp),
-                                )
-                                Spacer(Modifier.width(7.dp))
-                                Text(
-                                    text = user.phone.orEmpty(),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MatchUpColors.TextMuted,
-                                )
-                            }
-                        }
-                        if (user.age != null) {
-                            Spacer(Modifier.height(7.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Outlined.Cake,
-                                    contentDescription = null,
-                                    tint = MatchUpColors.TextFaint,
-                                    modifier = Modifier.size(15.dp),
-                                )
-                                Spacer(Modifier.width(7.dp))
-                                Text(
-                                    text = "${strings.age}: ${user.age}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MatchUpColors.TextMuted,
-                                )
-                            }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Outlined.Phone,
+                                contentDescription = null,
+                                tint = MatchUpColors.TextFaint,
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Spacer(Modifier.width(7.dp))
+                            Text(
+                                text = user.phone.orEmpty(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MatchUpColors.TextMuted,
+                            )
                         }
                     }
                     if (!user.emailVerified) {
@@ -283,8 +262,6 @@ fun ProfileScreen(
                 Spacer(Modifier.height(8.dp))
                 SurfaceCard {
                     InfoRow(strings.versionLabel.replace("%s", GeneratedConfig.APP_VERSION), "")
-                    Spacer(Modifier.height(8.dp))
-                    InfoRow(strings.apiServer, apiBaseUrl())
                     Spacer(Modifier.height(8.dp))
                     InfoRow(
                         strings.platformLabel,
@@ -496,7 +473,6 @@ fun EditProfileScreen(
     val strings = LocalStrings.current
     val scope = rememberCoroutineScope()
     var fullName by remember(user.id) { mutableStateOf(user.fullName) }
-    var age by remember(user.id) { mutableStateOf(user.age?.toString().orEmpty()) }
     var phone by remember(user.id) { mutableStateOf(user.phone.orEmpty()) }
     var saving by remember { mutableStateOf(false) }
     var submitted by remember { mutableStateOf(false) }
@@ -506,12 +482,6 @@ fun EditProfileScreen(
     val nameError = when {
         fieldErrors["full_name"] != null -> fieldErrors["full_name"]
         submitted && fullName.trim().length < 2 -> strings.fullNameRequired
-        else -> null
-    }
-    val ageError = when {
-        fieldErrors["age"] != null -> fieldErrors["age"]
-        submitted && age.isNotBlank() && (age.toIntOrNull() == null || age.toInt() !in 10..120) ->
-            strings.invalidAge
         else -> null
     }
     val phoneError = when {
@@ -571,43 +541,23 @@ fun EditProfileScreen(
                     imeAction = androidx.compose.ui.text.input.ImeAction.Next,
                 )
                 Spacer(Modifier.height(14.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    MatchUpTextField(
-                        value = age,
-                        onValueChange = { value ->
-                            if (value.all { it.isDigit() } && value.length <= 3) age = value
-                            fieldErrors = fieldErrors - "age"
-                            error = null
-                        },
-                        modifier = Modifier.weight(1f),
-                        label = "${strings.age} (${strings.optional})",
-                        isError = ageError != null,
-                        supportingText = ageError,
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
-                        imeAction = androidx.compose.ui.text.input.ImeAction.Next,
-                    )
-                    MatchUpTextField(
-                        value = phone,
-                        onValueChange = { phone = it; fieldErrors = fieldErrors - "phone"; error = null },
-                        modifier = Modifier.weight(1f),
-                        label = "${strings.phone} (${strings.optional})",
-                        placeholder = strings.phonePlaceholder,
-                        isError = phoneError != null,
-                        supportingText = phoneError,
-                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone,
-                        imeAction = androidx.compose.ui.text.input.ImeAction.Done,
-                    )
-                }
+                MatchUpTextField(
+                    value = phone,
+                    onValueChange = { phone = it; fieldErrors = fieldErrors - "phone"; error = null },
+                    label = "${strings.phone} (${strings.optional})",
+                    placeholder = strings.phonePlaceholder,
+                    isError = phoneError != null,
+                    supportingText = phoneError ?: strings.phoneHelper,
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+                )
                 Spacer(Modifier.height(22.dp))
                 PrimaryButton(
                     text = if (saving) strings.updating else strings.save,
                     onClick = {
                         submitted = true
                         error = null
-                        if (
-                            fullName.trim().length < 2 ||
-                            age.isNotBlank() && (age.toIntOrNull() == null || age.toInt() !in 10..120)
-                        ) {
+                        if (fullName.trim().length < 2) {
                             return@PrimaryButton
                         }
                         scope.launch {
@@ -615,7 +565,6 @@ fun EditProfileScreen(
                             try {
                                 state.dependencies.profile.update(
                                     fullName = fullName,
-                                    age = age.toIntOrNull(),
                                     phone = phone.ifBlank { null },
                                 )
                                 state.showMessage(strings.profileSaved)

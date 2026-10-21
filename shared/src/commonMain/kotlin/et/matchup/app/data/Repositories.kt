@@ -359,11 +359,10 @@ class PaymentRepository(
 class ProfileRepository(
     private val session: SessionManager,
 ) {
-    suspend fun update(fullName: String, age: Int?, phone: String?): UserDto =
+    suspend fun update(fullName: String, phone: String?): UserDto =
         session.updateProfile(
             UpdateProfileRequest(
                 fullName = fullName.trim(),
-                age = age,
                 phone = phone?.trim()?.takeIf { it.isNotEmpty() },
             ),
         )

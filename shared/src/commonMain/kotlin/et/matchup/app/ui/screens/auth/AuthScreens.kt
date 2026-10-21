@@ -49,11 +49,13 @@ import et.matchup.app.data.ApiException
 import et.matchup.app.platform.GoogleSignInProblem
 import et.matchup.app.platform.rememberGoogleSignIn
 import et.matchup.app.ui.LocalStrings
+import et.matchup.app.ui.Strings
 import et.matchup.app.ui.components.DividerLine
 import et.matchup.app.ui.components.GoogleButton
 import et.matchup.app.ui.components.MatchUpTextField
 import et.matchup.app.ui.components.OfflineBanner
 import et.matchup.app.ui.components.PasswordField
+import et.matchup.app.ui.components.PasswordStrengthMeter
 import et.matchup.app.ui.components.PrimaryButton
 import et.matchup.app.ui.components.SmallTextLink
 import et.matchup.app.ui.components.TopBar
@@ -382,7 +384,6 @@ fun SignupScreen(
     val scope = rememberCoroutineScope()
     var fullName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var age by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
@@ -400,12 +401,6 @@ fun SignupScreen(
         fieldErrors["email"] != null -> fieldErrors["email"]
         submitted && email.isBlank() -> strings.emailRequired
         submitted && !isValidEmail(email) -> strings.invalidEmail
-        else -> null
-    }
-    val ageError = when {
-        fieldErrors["age"] != null -> fieldErrors["age"]
-        submitted && age.isNotBlank() && (age.toIntOrNull() == null || age.toInt() !in 10..120) ->
-            strings.ageInvalid
         else -> null
     }
     val phoneError = when {
@@ -444,6 +439,27 @@ fun SignupScreen(
             InlineError(error!!)
             Spacer(Modifier.height(14.dp))
         }
+        SignupGoogleSection(
+            state = state,
+            strings = strings,
+            online = online,
+            onError = { error = it },
+        )
+        Spacer(Modifier.height(18.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.weight(1f)) { DividerLine() }
+            Text(
+                text = strings.or,
+                style = MaterialTheme.typography.bodySmall,
+                color = MatchUpColors.TextFaint,
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
+            Box(Modifier.weight(1f)) { DividerLine() }
+        }
+        Spacer(Modifier.height(18.dp))
         MatchUpTextField(
             value = fullName,
             onValueChange = { fullName = it; fieldErrors = fieldErrors - "full_name"; error = null },
@@ -466,34 +482,16 @@ fun SignupScreen(
             imeAction = ImeAction.Next,
         )
         Spacer(Modifier.height(14.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            MatchUpTextField(
-                value = age,
-                onValueChange = { value ->
-                    if (value.all { it.isDigit() } && value.length <= 3) age = value
-                    fieldErrors = fieldErrors - "age"
-                    error = null
-                },
-                modifier = Modifier.weight(1f),
-                label = "${strings.age} (${strings.optional})",
-                placeholder = strings.agePlaceholder,
-                isError = ageError != null,
-                supportingText = ageError,
-                keyboardType = KeyboardType.Number,
-                imeAction = ImeAction.Next,
-            )
-            MatchUpTextField(
-                value = phone,
-                onValueChange = { phone = it; fieldErrors = fieldErrors - "phone"; error = null },
-                modifier = Modifier.weight(1f),
-                label = "${strings.phone} (${strings.optional})",
-                placeholder = strings.phonePlaceholder,
-                isError = phoneError != null,
-                supportingText = phoneError,
-                keyboardType = KeyboardType.Phone,
-                imeAction = ImeAction.Next,
-            )
-        }
+        MatchUpTextField(
+            value = phone,
+            onValueChange = { phone = it; fieldErrors = fieldErrors - "phone"; error = null },
+            label = "${strings.phone} (${strings.optional})",
+            placeholder = strings.phonePlaceholder,
+            isError = phoneError != null,
+            supportingText = phoneError ?: strings.phoneHelper,
+            keyboardType = KeyboardType.Phone,
+            imeAction = ImeAction.Next,
+        )
         Spacer(Modifier.height(14.dp))
         PasswordField(
             value = password,
@@ -503,6 +501,12 @@ fun SignupScreen(
             supportingText = passwordError ?: strings.passwordHint,
             isError = passwordError != null,
             imeAction = ImeAction.Next,
+        )
+        PasswordStrengthMeter(
+            password = password,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
         )
         Spacer(Modifier.height(14.dp))
         PasswordField(
@@ -524,8 +528,7 @@ fun SignupScreen(
                     fullName.trim().length < 2 ||
                     !isValidEmail(email) ||
                     passwordProblem(password, strings) != null ||
-                    confirm != password ||
-                    age.isNotBlank() && (age.toIntOrNull() == null || age.toInt() !in 10..120)
+                    confirm != password
                 ) {
                     error = strings.pleaseFixFields
                     return@PrimaryButton
@@ -537,7 +540,6 @@ fun SignupScreen(
                             fullName = fullName,
                             email = email,
                             password = password,
-                            age = age.toIntOrNull(),
                             phone = phone.ifBlank { null },
                         )
                     } catch (throwable: Throwable) {
@@ -565,6 +567,49 @@ fun SignupScreen(
             SmallTextLink(text = strings.signIn, onClick = onSignIn)
         }
     }
+}
+
+@Composable
+private fun SignupGoogleSection(
+    state: AppState,
+    strings: Strings,
+    online: Boolean,
+    onError: (String) -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var loading by remember { mutableStateOf(false) }
+    val google = rememberGoogleSignIn(
+        onToken = { token ->
+            scope.launch {
+                loading = true
+                try {
+                    state.signInWithGoogle(token)
+                } catch (throwable: Throwable) {
+                    onError(throwable.formMessage(strings.errorNetwork))
+                } finally {
+                    loading = false
+                }
+            }
+        },
+        onError = { problem ->
+            loading = false
+            onError(
+                when (problem) {
+                    GoogleSignInProblem.NotConfigured -> strings.googleNotConfigured
+                    GoogleSignInProblem.Unavailable -> strings.googleUnavailable
+                    GoogleSignInProblem.Cancelled -> strings.googleCancelled
+                    GoogleSignInProblem.NoAccount -> strings.googleNoAccount
+                    GoogleSignInProblem.Failed -> strings.googleFailed
+                },
+            )
+        },
+    )
+    GoogleButton(
+        text = if (loading) strings.googleSigningIn else strings.continueWithGoogle,
+        onClick = google.launch,
+        loading = loading,
+        enabled = online,
+    )
 }
 
 @Composable

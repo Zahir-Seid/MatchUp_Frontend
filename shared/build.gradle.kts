@@ -150,6 +150,8 @@ kotlin {
                 implementation(libs.ktor.serialization.json)
 
                 implementation(libs.qrose)
+                implementation(libs.coil.compose)
+                implementation(libs.coil.network.ktor3)
             }
         }
         androidMain.dependencies {

@@ -76,7 +76,6 @@ class HttpApi(
         fullName: String,
         email: String,
         password: String,
-        age: Int?,
         phone: String?,
     ): SessionDto = post(
         "/auth/signup",
@@ -84,7 +83,6 @@ class HttpApi(
             fullName = fullName.trim(),
             email = email.trim(),
             password = password,
-            age = age,
             phone = phone?.trim()?.takeIf { it.isNotEmpty() },
         ),
     )

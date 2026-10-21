@@ -72,10 +72,9 @@ class AppState(
         fullName: String,
         email: String,
         password: String,
-        age: Int?,
         phone: String?,
     ): UserDto {
-        val user = dependencies.session.signup(fullName, email, password, age, phone)
+        val user = dependencies.session.signup(fullName, email, password, phone)
         pollUnread()
         return user
     }

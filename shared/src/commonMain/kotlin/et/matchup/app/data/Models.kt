@@ -25,7 +25,6 @@ data class UserDto(
     val id: String = "",
     @SerialName("full_name") val fullName: String = "",
     val email: String = "",
-    val age: Int? = null,
     val phone: String? = null,
     val role: String = "player",
     @SerialName("email_verified") val emailVerified: Boolean = false,
@@ -58,7 +57,6 @@ data class SignupRequest(
     @SerialName("full_name") val fullName: String,
     val email: String,
     val password: String,
-    val age: Int? = null,
     val phone: String? = null,
 )
 
@@ -300,7 +298,6 @@ data class ReadAllResultDto(
 @Serializable
 data class UpdateProfileRequest(
     @SerialName("full_name") val fullName: String? = null,
-    val age: Int? = null,
     val phone: String? = null,
 )
 

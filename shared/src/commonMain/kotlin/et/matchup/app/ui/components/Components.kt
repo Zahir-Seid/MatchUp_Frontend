@@ -70,6 +70,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -82,6 +83,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import et.matchup.app.ui.LocalStrings
 import et.matchup.app.ui.theme.MatchUpColors
+import coil3.compose.AsyncImage
 import et.matchup.app.util.initials
 import kotlin.math.absoluteValue
 
@@ -234,10 +236,42 @@ fun FieldArt(
             )
             drawRect(
                 Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, MatchUpColors.Background.copy(alpha = 0.82f)),
+                    colors = listOf(Color.Transparent, Color(0xFF070B09).copy(alpha = 0.82f)),
                     startY = h * 0.3f,
                     endY = h,
                 ),
+            )
+        }
+        content()
+    }
+}
+
+@Composable
+fun FieldHero(
+    imageUrl: String?,
+    seed: String,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit = {},
+) {
+    FieldArt(seed = seed, modifier = modifier) {
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Black.copy(alpha = 0.12f),
+                                Color.Black.copy(alpha = 0.62f),
+                            ),
+                        ),
+                    ),
             )
         }
         content()
@@ -577,6 +611,51 @@ fun PasswordField(
 }
 
 @Composable
+fun PasswordStrengthMeter(
+    password: String,
+    modifier: Modifier = Modifier,
+) {
+    if (password.isEmpty()) return
+    val strings = LocalStrings.current
+    val hasLetter = password.any { it.isLetter() }
+    val hasMix = password.any { it.isDigit() } || password.any { !it.isLetterOrDigit() }
+    val longEnough = password.length >= 8
+    val long = password.length >= 12
+    val score = listOf(longEnough, hasLetter, hasMix, long).count { it }
+    val color = when {
+        score <= 1 -> MatchUpColors.Red
+        score == 2 -> MatchUpColors.Amber
+        score == 3 -> MatchUpColors.Lime
+        else -> MatchUpColors.Mint
+    }
+    val label = when {
+        score <= 1 -> strings.passwordStrengthWeak
+        score == 2 -> strings.passwordStrengthFair
+        score == 3 -> strings.passwordStrengthGood
+        else -> strings.passwordStrengthStrong
+    }
+    Column(modifier) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            repeat(4) { index ->
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(if (index < score) color else MatchUpColors.OutlineSoft),
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = color,
+        )
+    }
+}
+
+@Composable
 fun FilterPill(
     text: String,
     selected: Boolean,
@@ -650,10 +729,11 @@ fun <T> SegmentedControl(
 fun StatusPill(status: String, label: String, modifier: Modifier = Modifier) {
     val (fg, bg) = when (status) {
         "confirmed" -> MatchUpColors.Mint to MatchUpColors.Mint.copy(alpha = 0.13f)
-        "verifying", "pending_review" -> MatchUpColors.Blue to MatchUpColors.Blue.copy(alpha = 0.13f)
+        "verifying" -> MatchUpColors.Amber to MatchUpColors.Amber.copy(alpha = 0.13f)
+        "pending_review" -> MatchUpColors.Purple to MatchUpColors.Purple.copy(alpha = 0.13f)
         "pending_payment" -> MatchUpColors.Amber to MatchUpColors.Amber.copy(alpha = 0.13f)
         "cancelled" -> MatchUpColors.Red to MatchUpColors.Red.copy(alpha = 0.12f)
-        "expired" -> MatchUpColors.TextMuted to MatchUpColors.SurfaceHigh
+        "expired" -> MatchUpColors.Red to MatchUpColors.Red.copy(alpha = 0.1f)
         else -> MatchUpColors.TextMuted to MatchUpColors.SurfaceHigh
     }
     Surface(

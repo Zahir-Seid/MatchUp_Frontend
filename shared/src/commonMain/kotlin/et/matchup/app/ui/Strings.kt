@@ -69,7 +69,7 @@ interface Strings {
     val password: String
     val fullName: String
     val phone: String
-    val age: String
+    val phoneHelper: String
     val forgotPassword: String
     val signIn: String
     val signingIn: String
@@ -88,12 +88,15 @@ interface Strings {
     val signUp: String
     val signingUp: String
     val passwordHint: String
+    val passwordStrengthWeak: String
+    val passwordStrengthFair: String
+    val passwordStrengthGood: String
+    val passwordStrengthStrong: String
     val invalidEmail: String
     val passwordTooShort: String
     val passwordNeedsMix: String
     val passwordTooLong: String
     val nameTooShort: String
-    val ageInvalid: String
     val phoneTooLong: String
     val showPassword: String
     val hidePassword: String
@@ -163,6 +166,12 @@ interface Strings {
     val reserve: String
     val reserving: String
     val reserveSpots: String
+    val reviewHoldTitle: String
+    val reviewHoldSubtitle: String
+    val confirmAndPay: String
+    val continueToPayment: String
+    val howItWorksTitle: String
+    val howItWorksBody: String
     val total: String
     val subtotal: String
     val discount: String
@@ -184,6 +193,10 @@ interface Strings {
     val holdExpiredBody: String
     val expiresIn: String
     val bookAgain: String
+    val timelineReserved: String
+    val timelineSubmitted: String
+    val timelineVerified: String
+    val timelineConfirmed: String
     val amountDue: String
     val stepSend: String
     val stepSubmit: String
@@ -244,6 +257,24 @@ interface Strings {
     val participants: String
     val supportNote: String
     val bookingNotFound: String
+    val verificationCheckingTitle: String
+    val verificationCheckingBody: String
+    val verificationConfirmedTitle: String
+    val verificationConfirmedBody: String
+    val verificationReviewTitle: String
+    val verificationReviewBody: String
+    val verificationExpiredTitle: String
+    val verificationExpiredBody: String
+    val verificationFailedTitle: String
+    val verificationFailedBody: String
+    val backToDiscover: String
+    val share: String
+    val addToCalendar: String
+    val directions: String
+    val leavePaymentTitle: String
+    val leavePaymentBody: String
+    val keepPaying: String
+    val leaveAnyway: String
     val monthsShort: List<String>
     val weekdaysShort: List<String>
     val timeTba: String
@@ -263,7 +294,6 @@ interface Strings {
     val emailPlaceholder: String
     val passwordPlaceholder: String
     val fullNamePlaceholder: String
-    val agePlaceholder: String
     val phonePlaceholder: String
     val passwordMinPlaceholder: String
     val repeatPasswordPlaceholder: String
@@ -327,14 +357,13 @@ interface Strings {
     val signedOut: String
     val savedTeammatesTitle: String
     val fullNameRequired: String
-    val invalidAge: String
     val confirmSignOut: String
     val goBack: String
 }
 
 object EnglishStrings : Strings {
     override val appName = "MatchUp"
-    override val tagline = "Find your game. Own the pitch."
+    override val tagline = "Find your game. Book your spot."
     override val back = "Back"
     override val close = "Close"
     override val cancel = "Cancel"
@@ -395,7 +424,7 @@ object EnglishStrings : Strings {
     override val password = "Password"
     override val fullName = "Full name"
     override val phone = "Phone"
-    override val age = "Age"
+    override val phoneHelper = "Used only so the organiser can reach you about a booking."
     override val forgotPassword = "Forgot password?"
     override val signIn = "Sign in"
     override val signingIn = "Signing in…"
@@ -413,13 +442,16 @@ object EnglishStrings : Strings {
     override val createAccountSubtitle = "Create your player profile in under a minute."
     override val signUp = "Create account"
     override val signingUp = "Creating account…"
-    override val passwordHint = "At least 10 characters, with a letter and a number or symbol."
+    override val passwordHint = "At least 8 characters, with a letter and a number or symbol."
+    override val passwordStrengthWeak = "Weak"
+    override val passwordStrengthFair = "Fair"
+    override val passwordStrengthGood = "Good"
+    override val passwordStrengthStrong = "Strong"
     override val invalidEmail = "Enter a valid email address."
-    override val passwordTooShort = "Password must be at least 10 characters."
+    override val passwordTooShort = "Password must be at least 8 characters."
     override val passwordNeedsMix = "Include a letter and at least one number or symbol."
     override val passwordTooLong = "Password must be 72 bytes or fewer."
     override val nameTooShort = "Enter your full name."
-    override val ageInvalid = "Enter an age between 10 and 120."
     override val phoneTooLong = "Phone number is too long."
     override val showPassword = "Show password"
     override val hidePassword = "Hide password"
@@ -489,6 +521,12 @@ object EnglishStrings : Strings {
     override val reserve = "Reserve"
     override val reserving = "Reserving…"
     override val reserveSpots = "Reserve spots"
+    override val reviewHoldTitle = "Review & hold"
+    override val reviewHoldSubtitle = "Check your spots, then we'll hold them while you pay."
+    override val confirmAndPay = "Confirm & pay"
+    override val continueToPayment = "Continue"
+    override val howItWorksTitle = "How it works"
+    override val howItWorksBody = "Pick a game and spots, pay by bank transfer, then show your pass at the field."
     override val total = "Total"
     override val subtotal = "Subtotal"
     override val discount = "Discount"
@@ -510,6 +548,10 @@ object EnglishStrings : Strings {
     override val holdExpiredBody = "The spots were released. Reserve again to restart the countdown."
     override val expiresIn = "Expires in"
     override val bookAgain = "Book again"
+    override val timelineReserved = "Spots reserved"
+    override val timelineSubmitted = "Payment submitted"
+    override val timelineVerified = "Payment verified"
+    override val timelineConfirmed = "Booking confirmed"
     override val amountDue = "Amount due"
     override val stepSend = "1. Send the money"
     override val stepSubmit = "2. Submit your reference"
@@ -570,6 +612,24 @@ object EnglishStrings : Strings {
     override val participants = "Participants"
     override val supportNote = "Need to change a confirmed booking? Contact MatchUp support."
     override val bookingNotFound = "Booking not found"
+    override val verificationCheckingTitle = "Checking your payment"
+    override val verificationCheckingBody = "This usually takes a moment. You can leave this screen; your booking updates automatically."
+    override val verificationConfirmedTitle = "You're in"
+    override val verificationConfirmedBody = "Payment confirmed. Your spot is locked in."
+    override val verificationReviewTitle = "Payment needs a check"
+    override val verificationReviewBody = "We couldn't verify this payment automatically. Support will review it shortly."
+    override val verificationExpiredTitle = "This hold expired"
+    override val verificationExpiredBody = "The spots were released. Reserve again to restart the countdown."
+    override val verificationFailedTitle = "Payment didn't go through"
+    override val verificationFailedBody = "Try another payment method, or reserve the spots again."
+    override val backToDiscover = "Back to Discover"
+    override val share = "Share"
+    override val addToCalendar = "Add to calendar"
+    override val directions = "Directions"
+    override val leavePaymentTitle = "Leave payment?"
+    override val leavePaymentBody = "Your hold keeps running. You can finish payment from My bookings."
+    override val keepPaying = "Keep paying"
+    override val leaveAnyway = "Leave anyway"
     override val monthsShort = listOf(
         "Jan", "Feb", "Mar", "Apr", "May", "Jun",
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -594,9 +654,8 @@ object EnglishStrings : Strings {
     override val emailPlaceholder = "you@example.com"
     override val passwordPlaceholder = "••••••••••"
     override val fullNamePlaceholder = "Abebe Kebede"
-    override val agePlaceholder = "24"
     override val phonePlaceholder = "+251…"
-    override val passwordMinPlaceholder = "At least 10 characters"
+    override val passwordMinPlaceholder = "At least 8 characters"
     override val repeatPasswordPlaceholder = "Repeat your password"
     override val paymentReferencePlaceholder = "FT26123… or receipt link"
 
@@ -658,7 +717,6 @@ object EnglishStrings : Strings {
     override val signedOut = "Signed out"
     override val savedTeammatesTitle = "Saved teammates"
     override val fullNameRequired = "Enter your full name."
-    override val invalidAge = "Enter an age between 10 and 120."
     override val confirmSignOut = "Sign out"
     override val goBack = "Go back"
 }
