@@ -1,17 +1,25 @@
 package et.matchup.app.ui.screens.home
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -19,6 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,11 +40,15 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.SportsSoccer
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,16 +72,18 @@ import et.matchup.app.ui.LocalStrings
 import et.matchup.app.ui.components.Avatar
 import et.matchup.app.ui.components.EmptyState
 import et.matchup.app.ui.components.ErrorState
-import et.matchup.app.ui.components.FieldArt
+import et.matchup.app.ui.components.FieldHero
 import et.matchup.app.ui.components.FilterPill
 import et.matchup.app.ui.components.IconBubble
 import et.matchup.app.ui.components.InfoBanner
 import et.matchup.app.ui.components.LoadingState
 import et.matchup.app.ui.components.MatchUpTextField
 import et.matchup.app.ui.components.OfflineBanner
+import et.matchup.app.ui.components.PrimaryButton
 import et.matchup.app.ui.components.SecondaryButton
 import et.matchup.app.ui.components.SurfaceCard
 import et.matchup.app.ui.components.Wordmark
+import et.matchup.app.platform.prefersReducedMotion
 import et.matchup.app.ui.theme.MatchUpColors
 import et.matchup.app.util.dateBucketLabel
 import et.matchup.app.util.formatLabel
@@ -87,6 +102,7 @@ import kotlinx.datetime.toLocalDateTime
 
 private enum class DateFilter { All, Today, Tomorrow, ThisWeek }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     state: AppState,
@@ -108,8 +124,8 @@ fun HomeScreen(
 
     var search by remember { mutableStateOf("") }
     var dateFilter by remember { mutableStateOf(DateFilter.All) }
-    var formatFilter by remember { mutableStateOf<String?>(null) }
-    var fieldFilter by remember { mutableStateOf<String?>(null) }
+    var formatFilter by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var fieldFilter by remember { mutableStateOf<Set<String>>(emptySet()) }
     var availableOnly by remember { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
 
@@ -152,8 +168,8 @@ fun HomeScreen(
                     game.format,
                     formatLabel(game.format, strings),
                 ).any { it.lowercase().contains(query) }
-                val formatMatches = formatFilter == null || game.format == formatFilter
-                val fieldMatches = fieldFilter == null || game.field.id == fieldFilter
+                val formatMatches = formatFilter.isEmpty() || game.format in formatFilter
+                val fieldMatches = fieldFilter.isEmpty() || game.field.id in fieldFilter
                 val availableMatches = !availableOnly || (!game.isFull && game.spotsRemaining > 0)
                 dateMatches && queryMatches && formatMatches && fieldMatches && availableMatches
             }
@@ -161,12 +177,21 @@ fun HomeScreen(
     }
 
     val hasFilters = dateFilter != DateFilter.All ||
-        formatFilter != null ||
-        fieldFilter != null ||
+        formatFilter.isNotEmpty() ||
+        fieldFilter.isNotEmpty() ||
         availableOnly
     val availableFields = snapshot?.fields.orEmpty()
     val availableFormats = snapshot?.games.orEmpty().map { it.format }.distinct().sorted()
 
+    val groups = remember(filtered) {
+        filtered.groupBy { dateBucketLabel(it.startsAt, strings) }
+    }
+
+    PullToRefreshBox(
+        isRefreshing = refreshing,
+        onRefresh = { if (online) refreshKey += 1 },
+        modifier = Modifier.fillMaxSize(),
+    ) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -215,7 +240,7 @@ fun HomeScreen(
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
-                        text = "${strings.addisAbaba} · ${strings.homeSubtitle}",
+                        text = "${strings.addisAbaba} Â· ${strings.homeSubtitle}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MatchUpColors.TextMuted,
                     )
@@ -267,30 +292,9 @@ fun HomeScreen(
                     )
                     FilterPill(
                         text = strings.filters,
-                        selected = showFilters || hasFilters,
-                        onClick = { showFilters = !showFilters },
+                        selected = hasFilters,
+                        onClick = { showFilters = true },
                         icon = Icons.Outlined.FilterList,
-                    )
-                }
-                if (showFilters) {
-                    Spacer(Modifier.height(12.dp))
-                    FilterPanel(
-                        dateFilter = dateFilter,
-                        formatFilter = formatFilter,
-                        fieldFilter = fieldFilter,
-                        availableOnly = availableOnly,
-                        formats = availableFormats,
-                        fields = availableFields.map { it.id to it.name },
-                        onDate = { dateFilter = it },
-                        onFormat = { formatFilter = it },
-                        onField = { fieldFilter = it },
-                        onAvailable = { availableOnly = it },
-                        onClear = {
-                            dateFilter = DateFilter.All
-                            formatFilter = null
-                            fieldFilter = null
-                            availableOnly = false
-                        },
                     )
                 }
                 Spacer(Modifier.height(16.dp))
@@ -353,12 +357,9 @@ fun HomeScreen(
         }
         when {
             loading && snapshot == null -> item {
-                LoadingState(
-                    text = strings.loading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp),
-                )
+                Column(Modifier.fillMaxWidth()) {
+                    repeat(3) { GameCardSkeleton() }
+                }
             }
             error != null && snapshot == null -> item {
                 ErrorState(
@@ -387,8 +388,8 @@ fun HomeScreen(
                                 onClick = {
                                     search = ""
                                     dateFilter = DateFilter.All
-                                    formatFilter = null
-                                    fieldFilter = null
+                                    formatFilter = emptySet()
+                                    fieldFilter = emptySet()
                                     availableOnly = false
                                 },
                             )
@@ -398,13 +399,53 @@ fun HomeScreen(
                     },
                 )
             }
-            else -> items(filtered, key = { it.id }) { game ->
-                GameCard(
-                    game = game,
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp),
-                    onClick = { onOpenGame(game.id) },
-                )
+            else -> groups.forEach { (label, games) ->
+                stickyHeader(key = "date-$label") {
+                    DateHeader(label = label, count = games.size)
+                }
+                items(games, key = { it.id }) { game ->
+                    GameCard(
+                        game = game,
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp),
+                        onClick = { onOpenGame(game.id) },
+                    )
+                }
             }
+        }
+    }
+    }
+
+    if (showFilters) {
+        ModalBottomSheet(
+            onDismissRequest = { showFilters = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MatchUpColors.Surface,
+            contentColor = MatchUpColors.Text,
+            scrimColor = MatchUpColors.Scrim,
+        ) {
+            FilterSheetContent(
+                dateFilter = dateFilter,
+                formatFilter = formatFilter,
+                fieldFilter = fieldFilter,
+                availableOnly = availableOnly,
+                formats = availableFormats,
+                fields = availableFields.map { it.id to it.name },
+                onDate = { dateFilter = it },
+                onToggleFormat = { format ->
+                    formatFilter = if (format in formatFilter) formatFilter - format else formatFilter + format
+                },
+                onToggleField = { id ->
+                    fieldFilter = if (id in fieldFilter) fieldFilter - id else fieldFilter + id
+                },
+                onAvailable = { availableOnly = it },
+                onClear = {
+                    dateFilter = DateFilter.All
+                    formatFilter = emptySet()
+                    fieldFilter = emptySet()
+                    availableOnly = false
+                },
+                onDone = { showFilters = false },
+            )
         }
     }
 }
@@ -446,89 +487,36 @@ private fun NotificationButton(unread: Int, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun FilterPanel(
+private fun FilterSheetContent(
     dateFilter: DateFilter,
-    formatFilter: String?,
-    fieldFilter: String?,
+    formatFilter: Set<String>,
+    fieldFilter: Set<String>,
     availableOnly: Boolean,
     formats: List<String>,
     fields: List<Pair<String, String>>,
     onDate: (DateFilter) -> Unit,
-    onFormat: (String?) -> Unit,
-    onField: (String?) -> Unit,
+    onToggleFormat: (String) -> Unit,
+    onToggleField: (String) -> Unit,
     onAvailable: (Boolean) -> Unit,
     onClear: () -> Unit,
+    onDone: () -> Unit,
 ) {
     val strings = LocalStrings.current
-    SurfaceCard {
-        Text(
-            text = strings.date,
-            style = MaterialTheme.typography.labelMedium,
-            color = MatchUpColors.TextMuted,
-        )
-        Spacer(Modifier.height(8.dp))
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FilterPill(strings.allDates, dateFilter == DateFilter.All, onClick = { onDate(DateFilter.All) })
-            FilterPill(strings.today, dateFilter == DateFilter.Today, onClick = { onDate(DateFilter.Today) })
-            FilterPill(strings.tomorrow, dateFilter == DateFilter.Tomorrow, onClick = { onDate(DateFilter.Tomorrow) })
-            FilterPill(strings.thisWeek, dateFilter == DateFilter.ThisWeek, onClick = { onDate(DateFilter.ThisWeek) })
-        }
-        if (formats.isNotEmpty()) {
-            Spacer(Modifier.height(14.dp))
-            Text(
-                text = strings.format,
-                style = MaterialTheme.typography.labelMedium,
-                color = MatchUpColors.TextMuted,
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                FilterPill(strings.allFormats, formatFilter == null, onClick = { onFormat(null) })
-                formats.forEach { format ->
-                    FilterPill(
-                        text = formatLabel(format, strings),
-                        selected = formatFilter == format,
-                        onClick = { onFormat(format) },
-                    )
-                }
-            }
-        }
-        if (fields.isNotEmpty()) {
-            Spacer(Modifier.height(14.dp))
-            Text(
-                text = strings.field,
-                style = MaterialTheme.typography.labelMedium,
-                color = MatchUpColors.TextMuted,
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                FilterPill(strings.allFields, fieldFilter == null, onClick = { onField(null) })
-                fields.forEach { (id, name) ->
-                    FilterPill(name, fieldFilter == id, onClick = { onField(id) })
-                }
-            }
-        }
-        Spacer(Modifier.height(14.dp))
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 20.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            FilterPill(
-                text = strings.availableOnly,
-                selected = availableOnly,
-                onClick = { onAvailable(!availableOnly) },
+            Text(
+                text = strings.filters,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MatchUpColors.Text,
             )
             Spacer(Modifier.weight(1f))
             Text(
@@ -540,6 +528,162 @@ private fun FilterPanel(
                     .clickable(onClick = onClear)
                     .padding(horizontal = 10.dp, vertical = 8.dp),
             )
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text = strings.date,
+            style = MaterialTheme.typography.labelMedium,
+            color = MatchUpColors.TextMuted,
+        )
+        Spacer(Modifier.height(8.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterPill(strings.allDates, dateFilter == DateFilter.All, onClick = { onDate(DateFilter.All) })
+            FilterPill(strings.today, dateFilter == DateFilter.Today, onClick = { onDate(DateFilter.Today) })
+            FilterPill(strings.tomorrow, dateFilter == DateFilter.Tomorrow, onClick = { onDate(DateFilter.Tomorrow) })
+            FilterPill(strings.thisWeek, dateFilter == DateFilter.ThisWeek, onClick = { onDate(DateFilter.ThisWeek) })
+        }
+        if (formats.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = strings.format,
+                style = MaterialTheme.typography.labelMedium,
+                color = MatchUpColors.TextMuted,
+            )
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                formats.forEach { format ->
+                    FilterPill(
+                        text = formatLabel(format, strings),
+                        selected = format in formatFilter,
+                        onClick = { onToggleFormat(format) },
+                    )
+                }
+            }
+        }
+        if (fields.isNotEmpty()) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = strings.field,
+                style = MaterialTheme.typography.labelMedium,
+                color = MatchUpColors.TextMuted,
+            )
+            Spacer(Modifier.height(8.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                fields.forEach { (id, name) ->
+                    FilterPill(name, id in fieldFilter, onClick = { onToggleField(id) })
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        FilterPill(
+            text = strings.availableOnly,
+            selected = availableOnly,
+            onClick = { onAvailable(!availableOnly) },
+        )
+        Spacer(Modifier.height(22.dp))
+        PrimaryButton(
+            text = strings.done,
+            onClick = onDone,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun DateHeader(label: String, count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MatchUpColors.Background)
+            .padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MatchUpColors.Lime,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MatchUpColors.TextFaint,
+        )
+        Spacer(Modifier.width(10.dp))
+        Box(
+            Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(MatchUpColors.OutlineSoft),
+        )
+    }
+}
+
+@Composable
+private fun GameCardSkeleton() {
+    val pulse = if (prefersReducedMotion()) {
+        0.75f
+    } else {
+        val transition = rememberInfiniteTransition(label = "skeleton")
+        val value by transition.animateFloat(
+            initialValue = 0.45f,
+            targetValue = 0.9f,
+            animationSpec = infiniteRepeatable(tween(850), RepeatMode.Reverse),
+            label = "skeletonPulse",
+        )
+        value
+    }
+    val block = MatchUpColors.SurfaceElevated.copy(alpha = pulse)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MatchUpColors.Surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MatchUpColors.OutlineSoft),
+    ) {
+        Column {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(154.dp)
+                    .background(block),
+            )
+            Column(Modifier.padding(15.dp)) {
+                Box(
+                    Modifier
+                        .fillMaxWidth(0.55f)
+                        .height(18.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(block),
+                )
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth(0.35f)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(block),
+                )
+                Spacer(Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .width(64.dp)
+                            .height(20.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(block),
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Box(
+                        Modifier
+                            .width(78.dp)
+                            .height(22.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(block),
+                    )
+                }
+            }
         }
     }
 }
@@ -563,7 +707,8 @@ private fun GameCard(
         border = androidx.compose.foundation.BorderStroke(1.dp, MatchUpColors.OutlineSoft),
     ) {
         Column {
-            FieldArt(
+            FieldHero(
+                imageUrl = game.field.imageUrl,
                 seed = game.field.name + game.id,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -576,7 +721,7 @@ private fun GameCard(
                     verticalAlignment = Alignment.Top,
                 ) {
                     Badge(
-                        text = "${dateBucketLabel(game.startsAt, strings)} · ${formatTime(game.startsAt, strings)}",
+                        text = "${dateBucketLabel(game.startsAt, strings)} Â· ${formatTime(game.startsAt, strings)}",
                         color = MatchUpColors.Text,
                         background = Color.Black.copy(alpha = 0.42f),
                     )
@@ -596,7 +741,7 @@ private fun GameCard(
                     Text(
                         text = game.field.name.ifBlank { strings.venue },
                         style = MaterialTheme.typography.titleLarge,
-                        color = MatchUpColors.Text,
+                        color = MatchUpColors.White,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -605,14 +750,14 @@ private fun GameCard(
                             Icon(
                                 imageVector = Icons.Outlined.LocationOn,
                                 contentDescription = null,
-                                tint = MatchUpColors.TextMuted,
+                                tint = MatchUpColors.White.copy(alpha = 0.75f),
                                 modifier = Modifier.size(13.dp),
                             )
                             Spacer(Modifier.width(3.dp))
                             Text(
                                 text = game.field.location,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MatchUpColors.TextMuted,
+                                color = MatchUpColors.White.copy(alpha = 0.75f),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -644,7 +789,7 @@ private fun GameCard(
                         Spacer(Modifier.width(4.dp))
                         Text(
                             text = if (game.durationMinutes > 0) {
-                                "${strings.minutes(game.durationMinutes)} · ${strings.spots}: ${game.capacity}"
+                                "${strings.minutes(game.durationMinutes)} Â· ${strings.spots}: ${game.capacity}"
                             } else {
                                 "${strings.spots}: ${game.capacity}"
                             },
@@ -694,3 +839,4 @@ private fun Badge(text: String, color: Color, background: Color) {
         )
     }
 }
+
