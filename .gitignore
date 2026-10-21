@@ -12,3 +12,4 @@ local.properties
 .externalNativeBuild/
 captures/
 node_modules/
+UI_UX.md

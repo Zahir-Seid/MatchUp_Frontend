@@ -40,9 +40,8 @@ deploy/       Caddy config and Android App Links assetlinks example
 ## Requirements
 
 - JDK 17 or newer. Android Studio's bundled JDK 21 also works.
-- Android Studio Quail 3 (2026.1.3) or newer. The project uses AGP 9.4, which
-  requires that version, and `compileSdk 37`, which needs at least Panda 3
-  (2025.3.3).
+- Android Studio Panda 3 (2025.3.3 Patch 1) or newer. The project uses
+  AGP 9.1.1, and `compileSdk 37` needs AGP 9.1.1 or newer.
 - Android SDK Platform 37 (`platforms;android-37.0`) and Build Tools 36.0.0.
   Configure them through `ANDROID_HOME` or `sdk.dir` in `local.properties`.
 - Node/Yarn do not need to be installed; the Kotlin Gradle plugin downloads
@@ -62,7 +61,8 @@ Android Studio imports it without conversion:
 4. Install SDK Platform 37 and Build Tools 36.0.0 when prompted, or run
    `sdkmanager "platforms;android-37.0" "build-tools;36.0.0"`.
 5. Select the `androidApp` run configuration and run it on an emulator or
-   device.
+   device. The configuration is checked in as `.run/androidApp.run.xml`; any
+   AVD from the Device Manager works (for example `Pixel_9_Pro`).
 
 `local.properties` (SDK path and optional MatchUp config keys) and `.idea/` are
 local files and stay out of version control. To verify the project from a
