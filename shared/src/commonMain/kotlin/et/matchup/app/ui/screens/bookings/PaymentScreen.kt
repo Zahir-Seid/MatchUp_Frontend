@@ -1,6 +1,7 @@
 package et.matchup.app.ui.screens.bookings
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,7 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +43,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +54,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import et.matchup.app.AppState
 import et.matchup.app.data.ApiException
 import et.matchup.app.data.BookingDto
@@ -57,6 +65,8 @@ import et.matchup.app.data.PaymentInstructionsDto
 import et.matchup.app.data.PaymentMethodDto
 import et.matchup.app.data.PaymentSubmissionDto
 import et.matchup.app.data.apiExceptionMessage
+import et.matchup.app.platform.PlatformBackHandler
+import et.matchup.app.platform.hapticTick
 import et.matchup.app.ui.LocalStrings
 import et.matchup.app.ui.components.BottomBar
 import et.matchup.app.ui.components.CheckLine
@@ -116,6 +126,8 @@ fun PaymentScreen(
     var submission by remember { mutableStateOf<PaymentSubmissionDto?>(null) }
     var idempotencyKey by remember { mutableStateOf(randomIdempotencyKey()) }
     var remainingSeconds by remember { mutableStateOf<Long?>(null) }
+    var showLeaveConfirm by remember { mutableStateOf(false) }
+    var warnedHaptic by remember { mutableStateOf(false) }
 
     LaunchedEffect(bookingId, loadKey) {
         if (booking == null) loading = true
@@ -150,6 +162,11 @@ fun PaymentScreen(
             delay(1_000)
             remainingSeconds = holdRemainingSeconds(booking?.holdExpiresAt)
                 ?: ((remainingSeconds ?: 0) - 1).coerceAtLeast(0)
+            val left = remainingSeconds ?: 0
+            if (!warnedHaptic && left in 1..60) {
+                warnedHaptic = true
+                hapticTick()
+            }
         }
     }
 
@@ -177,8 +194,17 @@ fun PaymentScreen(
         else -> null
     }
 
+    PlatformBackHandler(enabled = canPay) {
+        showLeaveConfirm = true
+    }
+
     Column(Modifier.fillMaxSize()) {
-        TopBar(title = strings.completePayment, onBack = onBack)
+        TopBar(
+            title = strings.completePayment,
+            onBack = {
+                if (canPay) showLeaveConfirm = true else onBack()
+            },
+        )
         Box(Modifier.weight(1f)) {
             when {
                 loading && booking == null -> LoadingState()
@@ -416,6 +442,32 @@ fun PaymentScreen(
             }
         }
     }
+
+    if (showLeaveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLeaveConfirm = false },
+            title = { Text(strings.leavePaymentTitle) },
+            text = {
+                Text(
+                    strings.leavePaymentBody +
+                        (remainingSeconds?.let { "\n\n${strings.expiresIn} ${formatCountdown(it)}" } ?: ""),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLeaveConfirm = false
+                    onBack()
+                }) {
+                    Text(strings.leaveAnyway, color = MatchUpColors.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeaveConfirm = false }) {
+                    Text(strings.keepPaying, color = MatchUpColors.Lime)
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -487,44 +539,80 @@ private fun PaymentHero(booking: BookingDto) {
 @Composable
 private fun HoldCountdown(remainingSeconds: Long) {
     val strings = LocalStrings.current
-    val urgent = remainingSeconds < 60
+    val urgent = remainingSeconds < 30
+    val warning = remainingSeconds < 60
+    val tint = when {
+        urgent -> MatchUpColors.Red
+        warning -> MatchUpColors.Amber
+        else -> MatchUpColors.Lime
+    }
+    val progress = (remainingSeconds / 300f).coerceIn(0f, 1f)
+    val label = "${strings.expiresIn} ${formatCountdown(remainingSeconds)}"
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = label },
         shape = RoundedCornerShape(18.dp),
-        color = if (urgent) {
-            MatchUpColors.Red.copy(alpha = 0.1f)
-        } else {
-            MatchUpColors.Lime.copy(alpha = 0.07f)
-        },
-        border = BorderStroke(
-            1.dp,
-            if (urgent) MatchUpColors.Red.copy(alpha = 0.3f) else MatchUpColors.Lime.copy(alpha = 0.18f),
-        ),
+        color = tint.copy(alpha = if (MatchUpColors.isDark) 0.1f else 0.08f),
+        border = BorderStroke(1.dp, tint.copy(alpha = 0.3f)),
     ) {
         Row(
             Modifier.padding(horizontal = 15.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Box(
+                modifier = Modifier.size(58.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val stroke = 5.dp.toPx()
+                    val inset = stroke / 2f
+                    drawArc(
+                        color = tint.copy(alpha = 0.18f),
+                        startAngle = -90f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        topLeft = Offset(inset, inset),
+                        size = Size(size.width - stroke, size.height - stroke),
+                        style = Stroke(width = stroke, cap = StrokeCap.Round),
+                    )
+                    drawArc(
+                        color = tint,
+                        startAngle = -90f,
+                        sweepAngle = 360f * progress,
+                        useCenter = false,
+                        topLeft = Offset(inset, inset),
+                        size = Size(size.width - stroke, size.height - stroke),
+                        style = Stroke(width = stroke, cap = StrokeCap.Round),
+                    )
+                }
+                Text(
+                    text = formatCountdown(remainingSeconds),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = tint,
+                )
+            }
+            Spacer(Modifier.width(13.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = strings.expiresIn,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MatchUpColors.TextMuted,
+                )
+                Text(
+                    text = strings.holdNote,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MatchUpColors.TextFaint,
+                )
+            }
             Icon(
                 imageVector = Icons.Outlined.HourglassTop,
                 contentDescription = null,
-                tint = if (urgent) MatchUpColors.Red else MatchUpColors.Lime,
-                modifier = Modifier.size(19.dp),
-            )
-            Spacer(Modifier.width(9.dp))
-            Text(
-                text = strings.expiresIn,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MatchUpColors.TextMuted,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = formatCountdown(remainingSeconds),
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                ),
-                color = if (urgent) MatchUpColors.Red else MatchUpColors.Lime,
+                tint = tint,
+                modifier = Modifier.size(20.dp),
             )
         }
     }

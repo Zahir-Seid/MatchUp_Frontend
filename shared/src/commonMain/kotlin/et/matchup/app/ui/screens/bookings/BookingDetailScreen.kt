@@ -3,6 +3,7 @@ package et.matchup.app.ui.screens.bookings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -70,6 +74,9 @@ import et.matchup.app.ui.components.PrimaryButton
 import et.matchup.app.ui.components.SecondaryButton
 import et.matchup.app.ui.components.SurfaceCard
 import et.matchup.app.ui.components.TopBar
+import et.matchup.app.platform.addCalendarEvent
+import et.matchup.app.platform.openMapSearch
+import et.matchup.app.platform.shareText
 import et.matchup.app.ui.theme.MatchUpColors
 import et.matchup.app.util.formatCountdown
 import et.matchup.app.util.formatDateLong
@@ -80,6 +87,7 @@ import et.matchup.app.util.moneyAmount
 import et.matchup.app.util.savedAtLabel
 import et.matchup.app.util.statusLabel
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
+import kotlinx.datetime.Instant
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -232,6 +240,16 @@ fun BookingDetailScreen(
                                     icon = Icons.Outlined.ErrorOutline,
                                 )
                             }
+                            if (current.status in setOf(
+                                    "pending_payment",
+                                    "verifying",
+                                    "pending_review",
+                                    "confirmed",
+                                )
+                            ) {
+                                Spacer(Modifier.height(14.dp))
+                                StatusTimeline(current)
+                            }
                             if (current.status in setOf("expired", "cancelled")) {
                                 Spacer(Modifier.height(10.dp))
                                 SecondaryButton(
@@ -248,6 +266,8 @@ fun BookingDetailScreen(
                                         state.showMessage(strings.referenceCopied)
                                     },
                                 )
+                                Spacer(Modifier.height(14.dp))
+                                BookingActions(current)
                             }
                             Spacer(Modifier.height(14.dp))
                             BookingDetailsCard(current)
@@ -470,6 +490,13 @@ private fun StatusNotice(
 private fun CheckInPass(booking: BookingDto, onCopy: () -> Unit) {
     val strings = LocalStrings.current
     val painter = rememberQrCodePainter("MATCHUP:${booking.referenceCode}")
+    var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(1_500)
+            copied = false
+        }
+    }
     SurfaceCard(color = MatchUpColors.SurfaceElevated) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -485,11 +512,16 @@ private fun CheckInPass(booking: BookingDto, onCopy: () -> Unit) {
                 color = MatchUpColors.Text,
                 modifier = Modifier.weight(1f),
             )
-            IconButton(onClick = onCopy) {
+            IconButton(
+                onClick = {
+                    onCopy()
+                    copied = true
+                },
+            ) {
                 Icon(
-                    Icons.Outlined.ContentCopy,
+                    imageVector = if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy,
                     contentDescription = strings.copyReference,
-                    tint = MatchUpColors.Lime,
+                    tint = if (copied) MatchUpColors.Mint else MatchUpColors.Lime,
                     modifier = Modifier.size(18.dp),
                 )
             }
@@ -734,6 +766,180 @@ private fun ParticipantsCard(booking: BookingDto) {
                     )
                 }
             }
+        }
+    }
+}
+@Composable
+private fun StatusTimeline(booking: BookingDto) {
+    val strings = LocalStrings.current
+    val submitted = booking.status != "pending_payment"
+    val confirmed = booking.status == "confirmed"
+    val steps = listOf(
+        strings.timelineReserved to true,
+        strings.timelineSubmitted to submitted,
+        strings.timelineVerified to confirmed,
+        strings.timelineConfirmed to confirmed,
+    )
+    val activeIndex = steps.indexOfFirst { !it.second }
+    SurfaceCard {
+        Column {
+            steps.forEachIndexed { index, step ->
+                val done = step.second
+                val active = index == activeIndex
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .background(
+                                    color = when {
+                                        done -> MatchUpColors.Lime
+                                        active -> MatchUpColors.Lime.copy(alpha = 0.14f)
+                                        else -> MatchUpColors.SurfaceHigh
+                                    },
+                                    shape = CircleShape,
+                                )
+                                .then(
+                                    if (!done && !active) {
+                                        Modifier.border(1.dp, MatchUpColors.Outline, CircleShape)
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            when {
+                                done -> Icon(
+                                    imageVector = Icons.Outlined.Check,
+                                    contentDescription = null,
+                                    tint = MatchUpColors.OnLime,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                                active -> Icon(
+                                    imageVector = Icons.Outlined.HourglassTop,
+                                    contentDescription = null,
+                                    tint = MatchUpColors.Lime,
+                                    modifier = Modifier.size(12.dp),
+                                )
+                            }
+                        }
+                        if (index != steps.lastIndex) {
+                            Box(
+                                Modifier
+                                    .width(2.dp)
+                                    .height(22.dp)
+                                    .background(
+                                        if (done) MatchUpColors.Lime.copy(alpha = 0.4f) else MatchUpColors.OutlineSoft,
+                                    ),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(11.dp))
+                    Text(
+                        text = step.first,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (done || active) MatchUpColors.Text else MatchUpColors.TextFaint,
+                        modifier = Modifier.padding(
+                            top = 1.dp,
+                            bottom = if (index != steps.lastIndex) 20.dp else 0.dp,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookingActions(booking: BookingDto) {
+    val strings = LocalStrings.current
+    val game = booking.games.firstOrNull()?.game
+    val field = game?.field
+    val start = game?.startsAt.orEmpty()
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        BookingAction(
+            icon = Icons.Outlined.Share,
+            label = strings.share,
+            modifier = Modifier.weight(1f),
+        ) {
+            val title = field?.name?.ifBlank { strings.venue } ?: strings.venue
+            val lines = listOfNotNull(
+                title,
+                if (game != null) {
+                    "${formatDateLong(start, strings)} - ${formatTimeRange(start, game.endsAt, strings)}"
+                } else {
+                    null
+                },
+                field?.location?.takeIf { it.isNotBlank() },
+                "${strings.referenceCode}: ${booking.referenceCode}",
+            )
+            shareText(title, lines.joinToString("\n"))
+        }
+        BookingAction(
+            icon = Icons.Outlined.CalendarMonth,
+            label = strings.addToCalendar,
+            modifier = Modifier.weight(1f),
+        ) {
+            if (game != null) {
+                val startMillis = runCatching { Instant.parse(start).toEpochMilliseconds() }.getOrNull()
+                val endMillis = runCatching { Instant.parse(game.endsAt).toEpochMilliseconds() }.getOrNull()
+                if (startMillis != null && endMillis != null) {
+                    addCalendarEvent(
+                        title = field?.name?.ifBlank { strings.venue } ?: strings.venue,
+                        description = "${strings.referenceCode}: ${booking.referenceCode}",
+                        location = field?.location.orEmpty(),
+                        startMillis = startMillis,
+                        endMillis = endMillis,
+                    )
+                }
+            }
+        }
+        BookingAction(
+            icon = Icons.Outlined.Map,
+            label = strings.directions,
+            modifier = Modifier.weight(1f),
+        ) {
+            val query = listOfNotNull(field?.name, field?.location)
+                .filter { it.isNotBlank() }
+                .joinToString(", ")
+            if (query.isNotBlank()) openMapSearch(query)
+        }
+    }
+}
+
+@Composable
+private fun BookingAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MatchUpColors.Surface,
+        border = BorderStroke(1.dp, MatchUpColors.OutlineSoft),
+    ) {
+        Column(
+            modifier = Modifier
+                .clickable(onClick = onClick)
+                .padding(vertical = 12.dp, horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MatchUpColors.Lime,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MatchUpColors.TextMuted,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                maxLines = 2,
+            )
         }
     }
 }

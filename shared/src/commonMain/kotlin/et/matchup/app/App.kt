@@ -70,14 +70,19 @@ import et.matchup.app.ui.screens.auth.SignupScreen
 import et.matchup.app.ui.screens.bookings.BookingDetailScreen
 import et.matchup.app.ui.screens.bookings.BookingsScreen
 import et.matchup.app.ui.screens.bookings.PaymentScreen
+import et.matchup.app.ui.screens.bookings.VerificationScreen
 import et.matchup.app.ui.screens.home.GameDetailScreen
 import et.matchup.app.ui.screens.home.HomeScreen
+import et.matchup.app.ui.screens.home.ReviewScreen
 import et.matchup.app.ui.screens.notifications.NotificationsScreen
 import et.matchup.app.ui.screens.profile.ChangePasswordScreen
 import et.matchup.app.ui.screens.profile.EditProfileScreen
 import et.matchup.app.ui.screens.profile.EmailVerificationScreen
 import et.matchup.app.ui.screens.profile.ProfileScreen
 import et.matchup.app.ui.screens.profile.SavedTeammatesScreen
+import coil3.ImageLoader
+import coil3.compose.setSingletonImageLoaderFactory
+import coil3.network.ktor3.KtorNetworkFetcherFactory
 import et.matchup.app.ui.theme.MatchUpColors
 import et.matchup.app.ui.theme.MatchUpTheme
 import et.matchup.app.platform.PlatformBackHandler
@@ -86,6 +91,11 @@ import kotlinx.coroutines.flow.collect
 
 @Composable
 fun App() {
+    setSingletonImageLoaderFactory { context ->
+        ImageLoader.Builder(context)
+            .components { add(KtorNetworkFetcherFactory()) }
+            .build()
+    }
     val container = remember { AppContainer() }
     val state = remember { AppState(container) }
     val auth by state.auth.collectAsState()
@@ -340,14 +350,42 @@ private fun MainFlow(
                     gameId = screen.gameId,
                     online = online,
                     onBack = { nav.pop() },
-                    onBooked = { bookingId -> nav.replace(MainScreen.Payment(bookingId)) },
+                    onReview = { bookingType, spots, names ->
+                        nav.push(
+                            MainScreen.Review(
+                                gameId = screen.gameId,
+                                bookingType = bookingType,
+                                spots = spots,
+                                names = names,
+                            ),
+                        )
+                    },
+                )
+                is MainScreen.Review -> ReviewScreen(
+                    state = state,
+                    gameId = screen.gameId,
+                    bookingType = screen.bookingType,
+                    spots = screen.spots,
+                    names = screen.names,
+                    online = online,
+                    onBack = { nav.pop() },
+                    onReserved = { bookingId -> nav.replace(MainScreen.Verification(bookingId)) },
+                )
+                is MainScreen.Verification -> VerificationScreen(
+                    state = state,
+                    bookingId = screen.bookingId,
+                    online = online,
+                    onBack = { nav.pop() },
+                    onViewBooking = { nav.replace(MainScreen.BookingDetail(screen.bookingId)) },
+                    onBrowseGames = { nav.replaceRoot(MainScreen.Home) },
+                    onRetryPayment = { nav.replace(MainScreen.Payment(screen.bookingId)) },
                 )
                 is MainScreen.Payment -> PaymentScreen(
                     state = state,
                     bookingId = screen.bookingId,
                     online = online,
                     onBack = { nav.pop() },
-                    onSubmitted = { bookingId -> nav.replace(MainScreen.BookingDetail(bookingId)) },
+                    onSubmitted = { bookingId -> nav.replace(MainScreen.Verification(bookingId)) },
                     onBookAgain = { gameId ->
                         nav.popToRoot()
                         if (gameId != null) nav.push(MainScreen.GameDetail(gameId))

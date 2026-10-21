@@ -17,6 +17,13 @@ sealed interface MainScreen {
     data object Notifications : MainScreen
     data object Profile : MainScreen
     data class GameDetail(val gameId: String) : MainScreen
+    data class Review(
+        val gameId: String,
+        val bookingType: String,
+        val spots: Int,
+        val names: List<String>,
+    ) : MainScreen
+    data class Verification(val bookingId: String) : MainScreen
     data class Payment(val bookingId: String) : MainScreen
     data class BookingDetail(val bookingId: String) : MainScreen
     data object EditProfile : MainScreen

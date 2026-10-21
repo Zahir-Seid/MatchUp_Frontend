@@ -49,14 +49,13 @@ import androidx.compose.ui.unit.dp
 import et.matchup.app.AppState
 import et.matchup.app.data.ApiException
 import et.matchup.app.data.GameDto
-import et.matchup.app.data.ParticipantInputDto
 import et.matchup.app.data.QuoteDto
 import et.matchup.app.data.apiExceptionMessage
 import et.matchup.app.ui.LocalStrings
 import et.matchup.app.ui.components.BottomBar
 import et.matchup.app.ui.components.EmptyState
 import et.matchup.app.ui.components.ErrorState
-import et.matchup.app.ui.components.FieldArt
+import et.matchup.app.ui.components.FieldHero
 import et.matchup.app.ui.components.FilterPill
 import et.matchup.app.ui.components.InfoBanner
 import et.matchup.app.ui.components.LoadingState
@@ -82,7 +81,7 @@ fun GameDetailScreen(
     gameId: String,
     online: Boolean,
     onBack: () -> Unit,
-    onBooked: (String) -> Unit,
+    onReview: (bookingType: String, spots: Int, names: List<String>) -> Unit,
 ) {
     val strings = LocalStrings.current
     val scope = rememberCoroutineScope()
@@ -102,8 +101,6 @@ fun GameDetailScreen(
     var quoteLoading by remember { mutableStateOf(false) }
     var quoteError by remember { mutableStateOf<String?>(null) }
     var quoteKey by remember { mutableStateOf(0) }
-    var reserving by remember { mutableStateOf(false) }
-    var reserveError by remember { mutableStateOf<String?>(null) }
     var loadKey by remember { mutableStateOf(0) }
 
     LaunchedEffect(gameId, loadKey) {
@@ -184,7 +181,8 @@ fun GameDetailScreen(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 22.dp),
                     ) {
                         item {
-                            FieldArt(
+                            FieldHero(
+                                imageUrl = loaded.field.imageUrl,
                                 seed = loaded.field.name + loaded.id,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -205,7 +203,7 @@ fun GameDetailScreen(
                                     Text(
                                         text = loaded.field.name.ifBlank { strings.venue },
                                         style = MaterialTheme.typography.headlineMedium,
-                                        color = MatchUpColors.Text,
+                                        color = MatchUpColors.White,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis,
                                     )
@@ -214,14 +212,14 @@ fun GameDetailScreen(
                                             Icon(
                                                 Icons.Outlined.LocationOn,
                                                 contentDescription = null,
-                                                tint = MatchUpColors.TextMuted,
+                                                tint = MatchUpColors.White.copy(alpha = 0.75f),
                                                 modifier = Modifier.size(13.dp),
                                             )
                                             Spacer(Modifier.width(4.dp))
                                             Text(
                                                 text = loaded.field.location,
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = MatchUpColors.TextMuted,
+                                                color = MatchUpColors.White.copy(alpha = 0.75f),
                                             )
                                         }
                                     }
@@ -260,14 +258,6 @@ fun GameDetailScreen(
                                     )
                                     Spacer(Modifier.height(10.dp))
                                 }
-                                if (reserveError != null) {
-                                    InfoBanner(
-                                        title = strings.errorGeneric,
-                                        body = reserveError.orEmpty(),
-                                        tint = MatchUpColors.Red,
-                                    )
-                                    Spacer(Modifier.height(12.dp))
-                                }
                                 if (full) {
                                     InfoBanner(
                                         title = strings.full,
@@ -299,6 +289,20 @@ fun GameDetailScreen(
                                         icon = Icons.Outlined.Payments,
                                         label = strings.pricePerPlayer,
                                         value = "${moneyAmount(loaded.pricePerPlayer)} ${strings.currency}",
+                                    )
+                                }
+                                Spacer(Modifier.height(18.dp))
+                                SurfaceCard(color = MatchUpColors.SurfaceElevated) {
+                                    Text(
+                                        text = strings.howItWorksTitle,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MatchUpColors.Text,
+                                    )
+                                    Spacer(Modifier.height(6.dp))
+                                    Text(
+                                        text = strings.howItWorksBody,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MatchUpColors.TextMuted,
                                     )
                                 }
                                 Spacer(Modifier.height(18.dp))
@@ -524,42 +528,22 @@ fun GameDetailScreen(
                 }
                 Spacer(Modifier.width(14.dp))
                 PrimaryButton(
-                    text = if (reserving) strings.reserving else strings.reserveSpots,
+                    text = strings.continueToPayment,
                     onClick = {
-                        val loaded = game ?: return@PrimaryButton
+                        if (game == null) return@PrimaryButton
                         if (!online) {
                             state.showMessage(strings.offlineBookingBody)
                             return@PrimaryButton
                         }
                         if (full) return@PrimaryButton
-                        reserveError = null
-                        scope.launch {
-                            reserving = true
-                            try {
-                                val participants = names.mapIndexedNotNull { index, name ->
-                                    name.trim().takeIf { it.isNotBlank() }?.let {
-                                        ParticipantInputDto(slotIndex = index + 1, fullName = it)
-                                    }
-                                }
-                                val booking = state.dependencies.bookings.createBooking(
-                                    gameId = loaded.id,
-                                    bookingType = if (showMonthly) bookingType else "single",
-                                    spotCount = spots,
-                                    participants = participants,
-                                )
-                                state.dependencies.catalog.clearMemory()
-                                onBooked(booking.id)
-                            } catch (throwable: Throwable) {
-                                reserveError = apiExceptionMessage(throwable)
-                                state.showError(throwable)
-                            } finally {
-                                reserving = false
-                            }
-                        }
+                        onReview(
+                            if (showMonthly) bookingType else "single",
+                            spots,
+                            names,
+                        )
                     },
-                    enabled = online && game != null && !full && !reserving && maxSpots > 0 &&
+                    enabled = online && game != null && !full && maxSpots > 0 &&
                         quote != null && !quoteLoading,
-                    loading = reserving,
                     modifier = Modifier.weight(1.05f),
                 )
             }

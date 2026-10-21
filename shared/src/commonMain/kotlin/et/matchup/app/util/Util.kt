@@ -97,7 +97,10 @@ fun formatCountdown(totalSeconds: Long): String {
 }
 
 fun moneyAmount(value: String): String =
-    value.removeSuffix(" ETB").trim().ifBlank { "0.00" }
+    value.removeSuffix(" ETB")
+        .trim()
+        .removeSuffix(".00")
+        .ifBlank { "0" }
 
 fun formatSantim(santim: Long): String {
     val whole = santim / 100
@@ -141,7 +144,7 @@ fun isValidEmail(value: String): Boolean =
     Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matches(value.trim())
 
 fun passwordProblem(password: String, strings: Strings): String? = when {
-    password.length < 10 -> strings.passwordTooShort
+    password.length < 8 -> strings.passwordTooShort
     password.encodeToByteArray().size > 72 -> strings.passwordTooLong
     password.none { it.isLetter() } ||
         password.none { it.isDigit() || !it.isLetterOrDigit() } -> strings.passwordNeedsMix
