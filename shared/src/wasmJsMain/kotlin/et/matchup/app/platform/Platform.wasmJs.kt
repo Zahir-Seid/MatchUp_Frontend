@@ -53,6 +53,31 @@ actual fun consumeInitialLink() {
 
 actual val isWebPlatform: Boolean = true
 
+actual fun prefersReducedMotion(): Boolean = reducedMotionQuery()
+
+actual fun hapticTick() {
+    vibrateTick()
+}
+
+actual fun shareText(title: String, text: String) {
+    shareViaBrowser(title, text)
+}
+
+actual fun openMapSearch(query: String) {
+    if (query.isBlank()) return
+    openMapQuery(query)
+}
+
+actual fun addCalendarEvent(
+    title: String,
+    description: String,
+    location: String,
+    startMillis: Long,
+    endMillis: Long,
+) {
+    downloadCalendarEvent(title, description, location, startMillis.toDouble(), endMillis.toDouble())
+}
+
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit
 
@@ -138,4 +163,83 @@ private external fun requestGoogleSignIn(
     clientId: String,
     onToken: (String) -> Unit,
     onError: (String) -> Unit,
+): Unit
+
+@OptIn(ExperimentalWasmJsInterop::class)
+@JsFun("() => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches")
+private external fun reducedMotionQuery(): Boolean
+
+@OptIn(ExperimentalWasmJsInterop::class)
+@JsFun("() => { try { if (navigator.vibrate) navigator.vibrate(14); } catch (e) {} }")
+private external fun vibrateTick(): Unit
+
+@OptIn(ExperimentalWasmJsInterop::class)
+@JsFun(
+    """
+    (title, text) => {
+      try {
+        if (navigator.share) {
+          navigator.share({ title: title, text: text }).catch(() => {});
+        } else if (navigator.clipboard) {
+          navigator.clipboard.writeText(text);
+        }
+      } catch (e) {}
+    }
+    """,
+)
+private external fun shareViaBrowser(title: String, text: String): Unit
+
+@OptIn(ExperimentalWasmJsInterop::class)
+@JsFun(
+    """
+    (query) => {
+      window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(query), '_blank');
+    }
+    """,
+)
+private external fun openMapQuery(query: String): Unit
+
+@OptIn(ExperimentalWasmJsInterop::class)
+@JsFun(
+    """
+    (title, description, location, start, end) => {
+      const stamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      const escapeText = (value) => String(value || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/,/g, '\\,')
+        .replace(/\n/g, '\\n');
+      const ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//MatchUp//EN',
+        'BEGIN:VEVENT',
+        'UID:' + Date.now() + '@matchup.et',
+        'DTSTAMP:' + stamp(Date.now()),
+        'DTSTART:' + stamp(start),
+        'DTEND:' + stamp(end),
+        'SUMMARY:' + escapeText(title),
+        'DESCRIPTION:' + escapeText(description),
+        'LOCATION:' + escapeText(location),
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\r\n');
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'matchup-game.ics';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }
+    """,
+)
+private external fun downloadCalendarEvent(
+    title: String,
+    description: String,
+    location: String,
+    startMillis: Double,
+    endMillis: Double,
 ): Unit

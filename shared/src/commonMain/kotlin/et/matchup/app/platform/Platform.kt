@@ -31,6 +31,27 @@ expect fun consumeInitialLink()
 
 expect val isWebPlatform: Boolean
 
+/** True when the OS asks apps to avoid non-essential animation. */
+expect fun prefersReducedMotion(): Boolean
+
+/** Short confirmation buzz. No-ops on devices/browsers without a vibrator. */
+expect fun hapticTick()
+
+/** Platform share sheet; falls back to copying the text. */
+expect fun shareText(title: String, text: String)
+
+/** Opens a maps search for a free-text query (name + location). */
+expect fun openMapSearch(query: String)
+
+/** Opens the platform calendar "new event" flow. Times are epoch milliseconds. */
+expect fun addCalendarEvent(
+    title: String,
+    description: String,
+    location: String,
+    startMillis: Long,
+    endMillis: Long,
+)
+
 @Composable
 expect fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit)
 
